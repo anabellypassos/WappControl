@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "626505792329",
+    "firebase_url": "https://teste-3219a-default-rtdb.firebaseio.com",
+    "project_id": "teste-3219a",
+    "storage_bucket": "teste-3219a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626505792329:android:1cb41e43a84c75423cb898",
+        "android_client_info": {
+          "package_name": "com.example.teste"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoY7JCGdi-3THlIdzYm3mkQrJ0eeXTtqs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
