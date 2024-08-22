@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'configuracao_residencia.dart';
+
 class Tela2 extends StatefulWidget {
   const Tela2({super.key});
 
@@ -9,12 +10,13 @@ class Tela2 extends StatefulWidget {
 
 class _Tela2State extends State<Tela2> {
   final List<Map<String, dynamic>> predefinedDevices = [
-    {'name': 'Micro-ondas', 'power': 1100, 'category': 'Cozinha', 'usage': 0.0},
+    {'name': 'Micro-ondas', 'power': 1100, 'category': 'Cozinha', 'usage': 0.0, 'usageInMinutes': 0.0, 'daysUsed': 1},
     // Adicione mais dispositivos conforme necessário
   ];
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController powerController = TextEditingController();
+  final TextEditingController daysUsedController = TextEditingController();
 
   TimeOfDay? selectedTime;
   String selectedTimeFormatted = "00:00";
@@ -41,16 +43,20 @@ class _Tela2State extends State<Tela2> {
   void saveDevice() {
     final String name = nameController.text;
     final int? power = int.tryParse(powerController.text);
+    final int? daysUsed = int.tryParse(daysUsedController.text);
 
-    if (name.isNotEmpty && power != null && selectedCategory.isNotEmpty && selectedTime != null) {
+    if (name.isNotEmpty && power != null && selectedCategory.isNotEmpty && selectedTime != null && daysUsed != null) {
       final double totalHours = selectedTime!.hour + (selectedTime!.minute / 60);
+      final double totalMinutes = totalHours * 60;
 
       setState(() {
         final device = {
           'name': name,
           'power': power,
-          'category': selectedCategory,
-          'usage': totalHours,
+          'category': selectedCategory, // Atribuir a categoria selecionada
+          'usage': (selectedIndex == null ? 0.0 : predefinedDevices[selectedIndex!]['usage']) + totalHours,
+          'usageInMinutes': (selectedIndex == null ? 0.0 : predefinedDevices[selectedIndex!]['usageInMinutes']) + totalMinutes,
+          'daysUsed': daysUsed,
         };
 
         if (selectedIndex == null) {
@@ -58,7 +64,7 @@ class _Tela2State extends State<Tela2> {
         } else {
           predefinedDevices[selectedIndex!] = device;
         }
-        
+
         _resetForm();
       });
 
@@ -75,24 +81,28 @@ class _Tela2State extends State<Tela2> {
   void _resetForm() {
     nameController.clear();
     powerController.clear();
+    daysUsedController.clear();
     selectedTimeFormatted = "00:00";
     selectedCategory = categories[0];
     selectedIndex = null;
+    selectedTime = null;
   }
 
   void editDevice(int index) {
     final device = predefinedDevices[index];
     nameController.text = device['name'];
     powerController.text = device['power'].toString();
-    selectedCategory = device['category'];
+    daysUsedController.text = device['daysUsed'].toString();
+    selectedCategory = device['category']; // Atribuir a categoria ao editar
     selectedTimeFormatted = _formatTimeFromHours(device['usage']);
     selectedIndex = index;
   }
 
   String _formatTimeFromHours(double hours) {
-    final int hoursPart = hours.toInt();
-    final int minutesPart = ((hours - hoursPart) * 60).toInt();
-    return '$hoursPart:$minutesPart'.padLeft(5, '0');
+    final int totalMinutes = (hours * 60).toInt();
+    final int hoursPart = totalMinutes ~/ 60;
+    final int minutesPart = totalMinutes % 60;
+    return '${hoursPart.toString().padLeft(2, '0')}:${minutesPart.toString().padLeft(2, '0')}';
   }
 
   void deleteDevice(int index) {
@@ -116,13 +126,16 @@ class _Tela2State extends State<Tela2> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings,
-            color: Color.fromARGB(255, 233, 196, 30),),
-
+            icon: const Icon(
+              Icons.settings,
+              color: Color.fromARGB(255, 233, 196, 30),
+            ),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ConfiguracaoResidencia()),
+                MaterialPageRoute(
+                  builder: (context) => const ConfiguracaoResidencia(),
+                ),
               );
             },
           ),
@@ -144,10 +157,15 @@ class _Tela2State extends State<Tela2> {
               itemCount: predefinedDevices.length,
               itemBuilder: (context, index) {
                 final device = predefinedDevices[index];
+                final int totalMinutes = (device['usage'] * 60).toInt();
+                final int hours = totalMinutes ~/ 60;
+                final int minutes = totalMinutes % 60;
+                final int daysUsed = device['daysUsed'];
+                final double dailyUsageInMinutes = device['usageInMinutes'] / daysUsed;
                 return ListTile(
                   title: Text('${device['name']} - ${device['power']}W'),
                   subtitle: Text(
-                      'Categoria: ${device['category']}\nUso total: ${device['usage']} horas'),
+                      'Categoria: ${device['category']}\nUso total: ${hours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m\nUso diário: ${dailyUsageInMinutes.toStringAsFixed(2)} minutos'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -176,6 +194,11 @@ class _Tela2State extends State<Tela2> {
             TextField(
               controller: powerController,
               decoration: const InputDecoration(labelText: 'Potência (W)'),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: daysUsedController,
+              decoration: const InputDecoration(labelText: 'Número de Dias Usados'),
               keyboardType: TextInputType.number,
             ),
             DropdownButton<String>(
