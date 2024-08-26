@@ -5,10 +5,10 @@ class ConfiguracaoResidencia extends StatefulWidget {
   const ConfiguracaoResidencia({super.key});
 
   @override
-  _ConfiguracaoResidenciaState createState() => _ConfiguracaoResidenciaState();
+  ConfiguracaoResidenciaState createState() => ConfiguracaoResidenciaState();
 }
 
-class _ConfiguracaoResidenciaState extends State<ConfiguracaoResidencia> {
+class ConfiguracaoResidenciaState extends State<ConfiguracaoResidencia> {
   final TextEditingController numPessoasController = TextEditingController();
   final TextEditingController numComodosController = TextEditingController();
   int numPessoas = 1;

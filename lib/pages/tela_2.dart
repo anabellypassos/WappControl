@@ -5,12 +5,19 @@ class Tela2 extends StatefulWidget {
   const Tela2({super.key});
 
   @override
-  _Tela2State createState() => _Tela2State();
+  Tela2State createState() => Tela2State();
 }
 
-class _Tela2State extends State<Tela2> {
+class Tela2State extends State<Tela2> {
   final List<Map<String, dynamic>> predefinedDevices = [
-    {'name': 'Micro-ondas', 'power': 1100, 'category': 'Cozinha', 'usage': 0.0, 'usageInMinutes': 0.0, 'daysUsed': 1},
+    {
+      'name': 'Micro-ondas',
+      'power': 1100,
+      'category': 'Cozinha',
+      'usage': 0.0,
+      'usageInMinutes': 0.0,
+      'daysUsed': 1
+    },
     // Adicione mais dispositivos conforme necessário
   ];
 
@@ -22,9 +29,32 @@ class _Tela2State extends State<Tela2> {
   String selectedTimeFormatted = "00:00";
 
   String selectedCategory = 'Cozinha';
+  String selectedDevice = 'Televisão: 100W'; // Adiciona uma variável para o dispositivo selecionado
   int? selectedIndex;
 
-  final List<String> categories = ['Cozinha', 'Iluminação', 'Entretenimento', 'Beleza', 'Outros'];
+  final List<String> eletrodomesticosDefinidos = [
+    'Televisão: 100W',
+    'Micro-ondas: 1100W',
+    'Chuveiro elétrico: 5500W',
+    'Notebook: 60W',
+    'Carregador de celular: 5W',
+    'Liquidificador: 350W',
+    'Cafeteira elétrica: 800W',
+    'Fogão elétrico: 1500W',
+    'Lâmpadas (LED): 10W por lâmpada',
+    'Ar-condicionado: 1200W',
+    'Ventilador: 70W',
+    'Chapinha: 60W',
+    'Secador de cabelo: 2000W',
+  ];
+
+  final List<String> categories = [
+    'Cozinha',
+    'Iluminação',
+    'Entretenimento',
+    'Beleza',
+    'Outros'
+  ];
 
   Future<void> pickTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
@@ -35,7 +65,8 @@ class _Tela2State extends State<Tela2> {
     if (picked != null && picked != selectedTime) {
       setState(() {
         selectedTime = picked;
-        selectedTimeFormatted = '${picked.hour}:${picked.minute.toString().padLeft(2, '0')}';
+        selectedTimeFormatted =
+            '${picked.hour}:${picked.minute.toString().padLeft(2, '0')}';
       });
     }
   }
@@ -45,17 +76,28 @@ class _Tela2State extends State<Tela2> {
     final int? power = int.tryParse(powerController.text);
     final int? daysUsed = int.tryParse(daysUsedController.text);
 
-    if (name.isNotEmpty && power != null && selectedCategory.isNotEmpty && selectedTime != null && daysUsed != null) {
-      final double totalHours = selectedTime!.hour + (selectedTime!.minute / 60);
+    if (name.isNotEmpty &&
+        power != null &&
+        selectedCategory.isNotEmpty &&
+        selectedTime != null &&
+        daysUsed != null) {
+      final double totalHours =
+          selectedTime!.hour + (selectedTime!.minute / 60);
       final double totalMinutes = totalHours * 60;
 
       setState(() {
         final device = {
           'name': name,
           'power': power,
-          'category': selectedCategory, // Atribuir a categoria selecionada
-          'usage': (selectedIndex == null ? 0.0 : predefinedDevices[selectedIndex!]['usage']) + totalHours,
-          'usageInMinutes': (selectedIndex == null ? 0.0 : predefinedDevices[selectedIndex!]['usageInMinutes']) + totalMinutes,
+          'category': selectedCategory,
+          'usage': (selectedIndex == null
+                  ? 0.0
+                  : predefinedDevices[selectedIndex!]['usage']) +
+              totalHours,
+          'usageInMinutes': (selectedIndex == null
+                  ? 0.0
+                  : predefinedDevices[selectedIndex!]['usageInMinutes']) +
+              totalMinutes,
           'daysUsed': daysUsed,
         };
 
@@ -84,6 +126,7 @@ class _Tela2State extends State<Tela2> {
     daysUsedController.clear();
     selectedTimeFormatted = "00:00";
     selectedCategory = categories[0];
+    selectedDevice = eletrodomesticosDefinidos[0]; // Redefine o dispositivo selecionado
     selectedIndex = null;
     selectedTime = null;
   }
@@ -93,7 +136,8 @@ class _Tela2State extends State<Tela2> {
     nameController.text = device['name'];
     powerController.text = device['power'].toString();
     daysUsedController.text = device['daysUsed'].toString();
-    selectedCategory = device['category']; // Atribuir a categoria ao editar
+    selectedCategory = device['category'];
+    selectedDevice = '${device['name']}: ${device['power']}W'; // Atribuir dispositivo ao editar
     selectedTimeFormatted = _formatTimeFromHours(device['usage']);
     selectedIndex = index;
   }
@@ -113,6 +157,20 @@ class _Tela2State extends State<Tela2> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Dispositivo excluído com sucesso!')),
     );
+  }
+
+  void _updateFieldsFromDevice(String device) {
+    final parts = device.split(':');
+    if (parts.length == 2) {
+      final name = parts[0].trim();
+      final powerString = parts[1].trim().replaceAll('W', '').trim();
+      final power = int.tryParse(powerString);
+
+      setState(() {
+        nameController.text = name;
+        powerController.text = power?.toString() ?? '';
+      });
+    }
   }
 
   @override
@@ -161,7 +219,8 @@ class _Tela2State extends State<Tela2> {
                 final int hours = totalMinutes ~/ 60;
                 final int minutes = totalMinutes % 60;
                 final int daysUsed = device['daysUsed'];
-                final double dailyUsageInMinutes = device['usageInMinutes'] / daysUsed;
+                final double dailyUsageInMinutes =
+                    device['usageInMinutes'] / daysUsed;
                 return ListTile(
                   title: Text('${device['name']} - ${device['power']}W'),
                   subtitle: Text(
@@ -189,7 +248,8 @@ class _Tela2State extends State<Tela2> {
             ),
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(labelText: 'Nome do Dispositivo'),
+              decoration:
+                  const InputDecoration(labelText: 'Nome do Dispositivo'),
             ),
             TextField(
               controller: powerController,
@@ -198,14 +258,38 @@ class _Tela2State extends State<Tela2> {
             ),
             TextField(
               controller: daysUsedController,
-              decoration: const InputDecoration(labelText: 'Número de Dias Usados'),
+              decoration: const InputDecoration(labelText: 'Dias Usados'),
               keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Text(
+                  'Hora de Uso:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 20),
+                Text(
+                  selectedTimeFormatted,
+                  style: const TextStyle(fontSize: 18),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () => pickTime(context),
+                  child: const Text('Selecionar Hora'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Selecione a Categoria:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             DropdownButton<String>(
               value: selectedCategory,
-              onChanged: (value) {
+              onChanged: (String? newValue) {
                 setState(() {
-                  selectedCategory = value!;
+                  selectedCategory = newValue!;
                 });
               },
               items: categories.map<DropdownMenuItem<String>>((String category) {
@@ -215,18 +299,31 @@ class _Tela2State extends State<Tela2> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 10),
-            ListTile(
-              title: const Text('Tempo de Uso Diário:'),
-              subtitle: Text(selectedTimeFormatted),
-              trailing: IconButton(
-                icon: const Icon(Icons.access_time),
-                onPressed: () => pickTime(context),
-              ),
+            const SizedBox(height: 20),
+            const Text(
+              'Selecione o Dispositivo:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            DropdownButton<String>(
+              value: selectedDevice,
+              onChanged: (String? newValue) {
+                setState(() {
+                  selectedDevice = newValue!;
+                  _updateFieldsFromDevice(selectedDevice); // Atualiza os campos com o dispositivo selecionado
+                });
+              },
+              items: eletrodomesticosDefinidos
+                  .map<DropdownMenuItem<String>>((String device) {
+                return DropdownMenuItem<String>(
+                  value: device,
+                  child: Text(device),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: saveDevice,
-              child: Text(selectedIndex == null ? 'Salvar' : 'Atualizar'),
+              child: const Text('Salvar Dispositivo'),
             ),
           ],
         ),
