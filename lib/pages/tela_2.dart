@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'configuracao_residencia.dart';
-
+import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../todoModel.dart';
 class Tela2 extends StatefulWidget {
   const Tela2({super.key});
 
@@ -24,15 +25,16 @@ class Tela2State extends State<Tela2> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController powerController = TextEditingController();
   final TextEditingController daysUsedController = TextEditingController();
+  final TextEditingController taskTitleController = TextEditingController();
 
   TimeOfDay? selectedTime;
   String selectedTimeFormatted = "00:00";
 
   String selectedCategory = 'Cozinha';
-  String selectedDevice = 'Televisão: 100W'; // Adiciona uma variável para o dispositivo selecionado
+  String selectedDevice = '';
   int? selectedIndex;
 
-  final List<String> eletrodomesticosDefinidos = [
+  final List<String> predefinedDevicesList = [
     'Televisão: 100W',
     'Micro-ondas: 1100W',
     'Chuveiro elétrico: 5500W',
@@ -71,7 +73,7 @@ class Tela2State extends State<Tela2> {
     }
   }
 
-  void saveDevice() {
+  Future<void> saveDevice() async {
     final String name = nameController.text;
     final int? power = int.tryParse(powerController.text);
     final int? daysUsed = int.tryParse(daysUsedController.text);
@@ -85,38 +87,62 @@ class Tela2State extends State<Tela2> {
           selectedTime!.hour + (selectedTime!.minute / 60);
       final double totalMinutes = totalHours * 60;
 
-      setState(() {
-        final device = {
-          'name': name,
-          'power': power,
-          'category': selectedCategory,
-          'usage': (selectedIndex == null
-                  ? 0.0
-                  : predefinedDevices[selectedIndex!]['usage']) +
-              totalHours,
-          'usageInMinutes': (selectedIndex == null
-                  ? 0.0
-                  : predefinedDevices[selectedIndex!]['usageInMinutes']) +
-              totalMinutes,
-          'daysUsed': daysUsed,
-        };
+      final device = DeviceModel(
+        name: name,
+        power: power,
+        category: selectedCategory,
+        usage: (selectedIndex == null
+                ? 0.0
+                : predefinedDevices[selectedIndex!]['usage']) +
+            totalHours,
+        usageInMinutes: (selectedIndex == null
+                ? 0.0
+                : predefinedDevices[selectedIndex!]['usageInMinutes']) +
+            totalMinutes,
+        daysUsed: daysUsed,
+      );
 
+      try {
         if (selectedIndex == null) {
-          predefinedDevices.add(device);
+          // Adicionar um novo dispositivo
+          final docRef = await FirebaseFirestore.instance
+              .collection('devices')
+              .add(device.toMap());
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Dispositivo adicionado com sucesso! ID: ${docRef.id}')),
+            );
+          }
         } else {
-          predefinedDevices[selectedIndex!] = device;
+          // Atualizar um dispositivo existente
+          final docRef = FirebaseFirestore.instance
+              .collection('devices')
+              .doc(predefinedDevices[selectedIndex!]['id']);
+
+          await docRef.update(device.toMap());
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Dispositivo atualizado com sucesso!')),
+            );
+          }
         }
 
         _resetForm();
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dispositivo salvo com sucesso!')),
-      );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao salvar dispositivo: $e')),
+          );
+        }
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, preencha todos os campos.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Por favor, preencha todos os campos.')),
+        );
+      }
     }
   }
 
@@ -124,9 +150,10 @@ class Tela2State extends State<Tela2> {
     nameController.clear();
     powerController.clear();
     daysUsedController.clear();
+    taskTitleController.clear();
     selectedTimeFormatted = "00:00";
     selectedCategory = categories[0];
-    selectedDevice = eletrodomesticosDefinidos[0]; // Redefine o dispositivo selecionado
+    selectedDevice = '';
     selectedIndex = null;
     selectedTime = null;
   }
@@ -137,7 +164,7 @@ class Tela2State extends State<Tela2> {
     powerController.text = device['power'].toString();
     daysUsedController.text = device['daysUsed'].toString();
     selectedCategory = device['category'];
-    selectedDevice = '${device['name']}: ${device['power']}W'; // Atribuir dispositivo ao editar
+    selectedDevice = '${device['name']}: ${device['power']}W';
     selectedTimeFormatted = _formatTimeFromHours(device['usage']);
     selectedIndex = index;
   }
@@ -149,27 +176,26 @@ class Tela2State extends State<Tela2> {
     return '${hoursPart.toString().padLeft(2, '0')}:${minutesPart.toString().padLeft(2, '0')}';
   }
 
-  void deleteDevice(int index) {
-    setState(() {
-      predefinedDevices.removeAt(index);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Dispositivo excluído com sucesso!')),
-    );
-  }
-
-  void _updateFieldsFromDevice(String device) {
-    final parts = device.split(':');
-    if (parts.length == 2) {
-      final name = parts[0].trim();
-      final powerString = parts[1].trim().replaceAll('W', '').trim();
-      final power = int.tryParse(powerString);
-
+  void deleteDevice(int index) async {
+    final deviceId = predefinedDevices[index]['id'];
+    try {
+      await FirebaseFirestore.instance.collection('devices').doc(deviceId).delete();
+      
       setState(() {
-        nameController.text = name;
-        powerController.text = power?.toString() ?? '';
+        predefinedDevices.removeAt(index);
       });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Dispositivo excluído com sucesso!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao excluir dispositivo: $e')),
+        );
+      }
     }
   }
 
@@ -182,150 +208,131 @@ class Tela2State extends State<Tela2> {
           'Cadastro de Dispositivos',
           style: TextStyle(color: Color.fromARGB(255, 233, 196, 30)),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.settings,
-              color: Color.fromARGB(255, 233, 196, 30),
-            ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ConfiguracaoResidencia(),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Dispositivos Pré-definidos:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: predefinedDevices.length,
-              itemBuilder: (context, index) {
-                final device = predefinedDevices[index];
-                final int totalMinutes = (device['usage'] * 60).toInt();
-                final int hours = totalMinutes ~/ 60;
-                final int minutes = totalMinutes % 60;
-                final int daysUsed = device['daysUsed'];
-                final double dailyUsageInMinutes =
-                    device['usageInMinutes'] / daysUsed;
-                return ListTile(
-                  title: Text('${device['name']} - ${device['power']}W'),
-                  subtitle: Text(
-                      'Categoria: ${device['category']}\nUso total: ${hours.toString().padLeft(2, '0')}h ${minutes.toString().padLeft(2, '0')}m\nUso diário: ${dailyUsageInMinutes.toStringAsFixed(2)} minutos'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => editDevice(index),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => deleteDevice(index),
-                      ),
-                    ],
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text(
+                'Cadastro de Dispositivos',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              DropdownButton<String>(
+                value: selectedDevice.isEmpty ? null : selectedDevice,
+                hint: const Text('Selecione um dispositivo'),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedDevice = newValue!;
+                    final deviceParts = selectedDevice.split(':');
+                    nameController.text = deviceParts[0].trim();
+                    powerController.text = deviceParts[1].trim().replaceAll('W', '');
+                  });
+                },
+                items: predefinedDevicesList.map((String device) {
+                  return DropdownMenuItem<String>(
+                    value: device,
+                    child: Text(device),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nome',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: powerController,
+                decoration: const InputDecoration(
+                  labelText: 'Potência (W)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: daysUsedController,
+                decoration: const InputDecoration(
+                  labelText: 'Dias Usados',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => pickTime(context),
+                      child: Text('Selecionar Hora'),
+                    ),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Cadastrar Novo Dispositivo:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            TextField(
-              controller: nameController,
-              decoration:
-                  const InputDecoration(labelText: 'Nome do Dispositivo'),
-            ),
-            TextField(
-              controller: powerController,
-              decoration: const InputDecoration(labelText: 'Potência (W)'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: daysUsedController,
-              decoration: const InputDecoration(labelText: 'Dias Usados'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Text(
-                  'Hora de Uso:',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 20),
-                Text(
-                  selectedTimeFormatted,
-                  style: const TextStyle(fontSize: 18),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () => pickTime(context),
-                  child: const Text('Selecionar Hora'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Selecione a Categoria:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            DropdownButton<String>(
-              value: selectedCategory,
-              onChanged: (String? newValue) {
-                setState(() {
-                  selectedCategory = newValue!;
-                });
-              },
-              items: categories.map<DropdownMenuItem<String>>((String category) {
-                return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(category),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Selecione o Dispositivo:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            DropdownButton<String>(
-              value: selectedDevice,
-              onChanged: (String? newValue) {
-                setState(() {
-                  selectedDevice = newValue!;
-                  _updateFieldsFromDevice(selectedDevice); // Atualiza os campos com o dispositivo selecionado
-                });
-              },
-              items: eletrodomesticosDefinidos
-                  .map<DropdownMenuItem<String>>((String device) {
-                return DropdownMenuItem<String>(
-                  value: device,
-                  child: Text(device),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: saveDevice,
-              child: const Text('Salvar Dispositivo'),
-            ),
-          ],
+                  const SizedBox(width: 16),
+                  Text(selectedTimeFormatted),
+                ],
+              ),
+              const SizedBox(height: 20),
+              DropdownButton<String>(
+                value: selectedCategory,
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedCategory = newValue!;
+                  });
+                },
+                items: categories.map((String category) {
+                  return DropdownMenuItem<String>(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: saveDevice,
+                child: Text(selectedIndex == null ? 'Adicionar Dispositivo' : 'Atualizar Dispositivo'),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Dispositivos Cadastrados',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              ListView.builder(
+                shrinkWrap: true,
+                itemCount: predefinedDevices.length,
+                itemBuilder: (context, index) {
+                  final device = predefinedDevices[index];
+                  return Card(
+                    child: ListTile(
+                      title: Text(device['name']),
+                      subtitle: Text('Potência: ${device['power']}W\nCategoria: ${device['category']}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => editDevice(index),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => deleteDevice(index),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
