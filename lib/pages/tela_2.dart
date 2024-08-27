@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../todoModel.dart';
+
 class Tela2 extends StatefulWidget {
   const Tela2({super.key});
 
@@ -10,22 +11,9 @@ class Tela2 extends StatefulWidget {
 }
 
 class Tela2State extends State<Tela2> {
-  final List<Map<String, dynamic>> predefinedDevices = [
-    {
-      'name': 'Micro-ondas',
-      'power': 1100,
-      'category': 'Cozinha',
-      'usage': 0.0,
-      'usageInMinutes': 0.0,
-      'daysUsed': 1
-    },
-    // Adicione mais dispositivos conforme necessário
-  ];
-
   final TextEditingController nameController = TextEditingController();
   final TextEditingController powerController = TextEditingController();
   final TextEditingController daysUsedController = TextEditingController();
-  final TextEditingController taskTitleController = TextEditingController();
 
   TimeOfDay? selectedTime;
   String selectedTimeFormatted = "00:00";
@@ -57,6 +45,12 @@ class Tela2State extends State<Tela2> {
     'Beleza',
     'Outros'
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchDevices();
+  }
 
   Future<void> pickTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
@@ -91,29 +85,15 @@ class Tela2State extends State<Tela2> {
         name: name,
         power: power,
         category: selectedCategory,
-        usage: (selectedIndex == null
-                ? 0.0
-                : predefinedDevices[selectedIndex!]['usage']) +
-            totalHours,
-        usageInMinutes: (selectedIndex == null
-                ? 0.0
-                : predefinedDevices[selectedIndex!]['usageInMinutes']) +
-            totalMinutes,
+        usage: totalHours,
+        usageInMinutes: totalMinutes,
         daysUsed: daysUsed,
       );
 
       try {
         if (selectedIndex == null) {
           // Adicionar um novo dispositivo
-          final docRef = await FirebaseFirestore.instance
-              .collection('devices')
-              .add(device.toMap());
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Dispositivo adicionado com sucesso! ID: ${docRef.id}')),
-            );
-          }
+          await FirebaseFirestore.instance.collection('devices').add(device.toMap());
         } else {
           // Atualizar um dispositivo existente
           final docRef = FirebaseFirestore.instance
@@ -121,28 +101,18 @@ class Tela2State extends State<Tela2> {
               .doc(predefinedDevices[selectedIndex!]['id']);
 
           await docRef.update(device.toMap());
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Dispositivo atualizado com sucesso!')),
-            );
-          }
         }
 
         _resetForm();
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao salvar dispositivo: $e')),
-          );
-        }
-      }
-    } else {
-      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Por favor, preencha todos os campos.')),
+          SnackBar(content: Text('Erro ao salvar dispositivo: $e')),
         );
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, preencha todos os campos.')),
+      );
     }
   }
 
@@ -150,12 +120,29 @@ class Tela2State extends State<Tela2> {
     nameController.clear();
     powerController.clear();
     daysUsedController.clear();
-    taskTitleController.clear();
     selectedTimeFormatted = "00:00";
     selectedCategory = categories[0];
     selectedDevice = '';
     selectedIndex = null;
     selectedTime = null;
+  }
+
+  Future<void> fetchDevices() async {
+    final snapshot = await FirebaseFirestore.instance.collection('devices').get();
+
+    setState(() {
+      predefinedDevices = snapshot.docs
+          .map((doc) => {
+                'id': doc.id,
+                'name': doc['name'],
+                'power': doc['power'],
+                'category': doc['category'],
+                'usage': doc['usage'],
+                'usageInMinutes': doc['usageInMinutes'],
+                'daysUsed': doc['daysUsed'],
+              })
+          .toList();
+    });
   }
 
   void editDevice(int index) {
@@ -180,24 +167,17 @@ class Tela2State extends State<Tela2> {
     final deviceId = predefinedDevices[index]['id'];
     try {
       await FirebaseFirestore.instance.collection('devices').doc(deviceId).delete();
-      
       setState(() {
         predefinedDevices.removeAt(index);
       });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Dispositivo excluído com sucesso!')),
-        );
-      }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao excluir dispositivo: $e')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao excluir dispositivo: $e')),
+      );
     }
   }
+
+  List<Map<String, dynamic>> predefinedDevices = [];
 
   @override
   Widget build(BuildContext context) {
@@ -272,7 +252,7 @@ class Tela2State extends State<Tela2> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => pickTime(context),
-                      child: Text('Selecionar Hora'),
+                      child: const Text('Selecionar Hora'),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -302,21 +282,22 @@ class Tela2State extends State<Tela2> {
               const SizedBox(height: 20),
               const Text(
                 'Dispositivos Cadastrados',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               ListView.builder(
                 shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
                 itemCount: predefinedDevices.length,
                 itemBuilder: (context, index) {
                   final device = predefinedDevices[index];
                   return Card(
                     child: ListTile(
-                      title: Text(device['name']),
-                      subtitle: Text('Potência: ${device['power']}W\nCategoria: ${device['category']}'),
+                      title: Text('${device['name']} - ${device['power']}W'),
+                      subtitle: Text('Categoria: ${device['category']} | Uso: ${_formatTimeFromHours(device['usage'])} h/dia'),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
+                        children: [
                           IconButton(
                             icon: const Icon(Icons.edit),
                             onPressed: () => editDevice(index),
@@ -338,3 +319,4 @@ class Tela2State extends State<Tela2> {
     );
   }
 }
+
