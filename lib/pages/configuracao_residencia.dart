@@ -1,5 +1,31 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+class CONFIMODEL {
+  final int users;
+  final int comod;
+  CONFIMODEL({
+    required this.users,
+    required this.comod,
+  });
+
+  // Construtor Factory para converter JSON em objeto Dart
+  factory CONFIMODEL.fromJson(Map<String, dynamic> json) {
+    return CONFIMODEL(
+      users: json['users'],
+      comod: json['comod'],
+    );
+  }
+
+  // Método para converter objeto Dart em um Map
+  Map<String, dynamic> toMap() {
+    return {
+      'users': users,
+      'comod': comod,
+    };
+  }
+}
 
 class ConfiguracaoResidencia extends StatefulWidget {
   const ConfiguracaoResidencia({super.key});
@@ -14,14 +40,37 @@ class ConfiguracaoResidenciaState extends State<ConfiguracaoResidencia> {
   int numPessoas = 1;
   int numComodos = 1;
 
-  // Lista de dispositivos (exemplo)
-  List<Map<String, dynamic>> devices = [
-    {'name': 'Chuveiro', 'power': 3000, 'type': 'water', 'usage': 0.0},
-    {'name': 'Lâmpada', 'power': 60, 'type': 'light', 'usage': 0.0},
-    // Adicione outros dispositivos conforme necessário
-  ];
+  // Carregar as configurações salvas ao iniciar a tela
+  @override
+  void initState() {
+    super.initState();
+    carregarConfiguracoes();
+  }
 
-  void salvarConfiguracoes() {
+  // Método para carregar configurações salvas do Firestore
+  Future<void> carregarConfiguracoes() async {
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('configuracoes')
+          .doc('residencia')
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        setState(() {
+          numPessoas = data['users'] ?? 1;
+          numComodos = data['comod'] ?? 1;
+          numPessoasController.text = numPessoas.toString();
+          numComodosController.text = numComodos.toString();
+        });
+      }
+    } catch (e) {
+      print('Erro ao carregar as configurações: $e');
+    }
+  }
+
+  // Método para salvar as configurações no Firestore
+  Future<void> salvarConfiguracoes() async {
     final int? pessoas = int.tryParse(numPessoasController.text);
     final int? comodos = int.tryParse(numComodosController.text);
 
@@ -33,9 +82,23 @@ class ConfiguracaoResidenciaState extends State<ConfiguracaoResidencia> {
 
       ajustarConsumoDispositivos();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Configurações salvas com sucesso!')),
-      );
+      // Criar o objeto para salvar
+      CONFIMODEL config = CONFIMODEL(users: numPessoas, comod: numComodos);
+
+      try {
+        await FirebaseFirestore.instance
+            .collection('configuracoes')
+            .doc('residencia')
+            .set(config.toMap());
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Configurações salvas com sucesso!')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao salvar configurações.')),
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor, insira valores válidos.')),
@@ -44,32 +107,15 @@ class ConfiguracaoResidenciaState extends State<ConfiguracaoResidencia> {
   }
 
   void ajustarConsumoDispositivos() {
-    for (var device in devices) {
-      switch (device['type']) {
-        case 'water':
-          // Ajusta o consumo de dispositivos de água como chuveiros
-          device['usage'] = (device['usage'] as double) * numPessoas;
-          break;
-        case 'light':
-          // Ajusta o consumo de dispositivos de luz com base no número de cômodos
-          device['usage'] = (device['usage'] as double) * numComodos;
-          break;
-        // Adicione mais casos conforme necessário
-      }
-    }
-
-    // Atualizar o consumo total (se necessário)
+    // Lógica de ajuste de consumo dos dispositivos
+    // Atualizar consumo total se necessário
     atualizarConsumoTotal();
   }
 
   void atualizarConsumoTotal() {
-    // Lógica para calcular o consumo total baseado nos dispositivos ajustados
+    // Lógica para calcular o consumo total
     double consumoTotal = 0.0;
-    for (var device in devices) {
-      consumoTotal += (device['power'] as double) * (device['usage'] as double);
-    }
-
-    // Atualize a visualização do consumo total, se necessário
+    // Exemplo de cálculo
     print('Consumo Total: $consumoTotal kWh');
   }
 

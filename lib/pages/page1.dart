@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart'; // Importação correta para Observer
 import 'tela_2.dart';
 import 'package:teste/page1_store.dart'; // Ajuste o caminho se necessário
+import 'configuracao_residencia.dart';
+
 
 class Page1 extends StatelessWidget {
   final Page1Store _store = Page1Store();
@@ -37,8 +39,13 @@ class Page1 extends StatelessWidget {
               color: Color.fromARGB(255, 233, 196, 30),
             ),
             onPressed: () {
+                Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ConfiguracaoResidencia()),
+          );
+        },
               // Navegar para a tela de configurações da residência
-            },
+          
           ),
         ],
       ),

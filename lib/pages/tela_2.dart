@@ -171,6 +171,7 @@ class Tela2State extends State<Tela2> {
         predefinedDevices.removeAt(index);
       });
     } catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao excluir dispositivo: $e')),
       );
