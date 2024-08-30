@@ -80,7 +80,7 @@ class Page1 extends StatelessWidget {
           // Navegar para a tela de adição de dispositivos
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const Tela2()),
+            MaterialPageRoute(builder: (context) => Tela2()),
           );
         },
         child: const Icon(

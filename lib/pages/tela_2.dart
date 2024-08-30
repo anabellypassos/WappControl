@@ -1,11 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../todoModel.dart';
 
 class Tela2 extends StatefulWidget {
-  const Tela2({super.key});
-
   @override
   Tela2State createState() => Tela2State();
 }
@@ -81,28 +78,30 @@ class Tela2State extends State<Tela2> {
           selectedTime!.hour + (selectedTime!.minute / 60);
       final double totalMinutes = totalHours * 60;
 
-      final device = DeviceModel(
-        name: name,
-        power: power,
-        category: selectedCategory,
-        usage: totalHours,
-        usageInMinutes: totalMinutes,
-        daysUsed: daysUsed,
-      );
+      final device = {
+        'name': name,
+        'power': power,
+        'category': selectedCategory,
+        'usage': totalHours,
+        'usageInMinutes': totalMinutes,
+        'daysUsed': daysUsed,
+      };
 
       try {
         if (selectedIndex == null) {
           // Adicionar um novo dispositivo
-          await FirebaseFirestore.instance.collection('devices').add(device.toMap());
+          await FirebaseFirestore.instance.collection('devices').add(device);
         } else {
           // Atualizar um dispositivo existente
           final docRef = FirebaseFirestore.instance
               .collection('devices')
               .doc(predefinedDevices[selectedIndex!]['id']);
 
-          await docRef.update(device.toMap());
+          await docRef.update(device);
         }
 
+        // Atualiza a lista de dispositivos e limpa o formulário
+        await fetchDevices();
         _resetForm();
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -278,37 +277,34 @@ class Tela2State extends State<Tela2> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: saveDevice,
-                child: Text(selectedIndex == null ? 'Adicionar Dispositivo' : 'Atualizar Dispositivo'),
+                child: Text(selectedIndex == null ? 'Salvar' : 'Atualizar'),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Dispositivos Cadastrados',
-                                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               ListView.builder(
                 shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
                 itemCount: predefinedDevices.length,
                 itemBuilder: (context, index) {
                   final device = predefinedDevices[index];
-                  return Card(
-                    child: ListTile(
-                      title: Text('${device['name']} - ${device['power']}W'),
-                      subtitle: Text('Categoria: ${device['category']} | Uso: ${_formatTimeFromHours(device['usage'])} h/dia'),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () => editDevice(index),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () => deleteDevice(index),
-                          ),
-                        ],
-                      ),
+                  return ListTile(
+                    title: Text('${device['name']} (${device['power']}W)'),
+                    subtitle: Text('Categoria: ${device['category']}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () => editDevice(index),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () => deleteDevice(index),
+                        ),
+                      ],
                     ),
                   );
                 },
@@ -320,4 +316,3 @@ class Tela2State extends State<Tela2> {
     );
   }
 }
-
