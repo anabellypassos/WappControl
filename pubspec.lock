@@ -214,6 +214,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.6"
+  equatable:
+    dependency: transitive
+    description:
+      name: equatable
+      sha256: c2b87cb7756efdf69892005af546c56c0b5037f54d2a88269b4f347a505e3ca2
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.5"
   fake_async:
     dependency: transitive
     description:
@@ -262,6 +270,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
+  fl_chart:
+    dependency: "direct main"
+    description:
+      name: fl_chart
+      sha256: "94307bef3a324a0d329d3ab77b2f0c6e5ed739185ffc029ed28c0f9b019ea7ef"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.69.0"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -389,6 +405,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.0"
+  logger:
+    dependency: "direct main"
+    description:
+      name: logger
+      sha256: "697d067c60c20999686a0add96cf6aba723b3aa1f83ecf806a8097231529ec32"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.0"
   logging:
     dependency: transitive
     description:

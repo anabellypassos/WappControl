@@ -4,7 +4,6 @@ import 'pages/page1.dart';
 import 'firebase_options.dart';
 
 
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(

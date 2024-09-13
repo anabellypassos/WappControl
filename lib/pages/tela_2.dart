@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class Tela2 extends StatefulWidget {
+  const Tela2({super.key});
+
   @override
   Tela2State createState() => Tela2State();
 }
@@ -22,13 +24,13 @@ class Tela2State extends State<Tela2> {
   final List<String> predefinedDevicesList = [
     'Televisão: 100W',
     'Micro-ondas: 1100W',
+    'Lampada : 10w',
     'Chuveiro elétrico: 5500W',
     'Notebook: 60W',
     'Carregador de celular: 5W',
     'Liquidificador: 350W',
     'Cafeteira elétrica: 800W',
     'Fogão elétrico: 1500W',
-    'Lâmpadas (LED): 10W por lâmpada',
     'Ar-condicionado: 1200W',
     'Ventilador: 70W',
     'Chapinha: 60W',
@@ -280,7 +282,7 @@ class Tela2State extends State<Tela2> {
                 child: Text(selectedIndex == null ? 'Salvar' : 'Atualizar'),
               ),
               const SizedBox(height: 20),
-              Text(
+              const Text(
                 'Dispositivos Cadastrados',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),

@@ -1,12 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class DeviceModel {
   final String name;
-  final int power;
+  final int power; // Potência em W
   final String category;
-  final double usage;
-  final double usageInMinutes;
-  final int daysUsed;
+  final double usage; // Tempo de uso diário em horas
+  final double usageInMinutes; // Tempo de uso diário em minutos
+  final int daysUsed; // Número de dias de uso no mês
 
   DeviceModel({
     required this.name,
@@ -17,16 +15,20 @@ class DeviceModel {
     required this.daysUsed,
   });
 
-  // Construtor Factory para converter JSON em objeto Dart
-  factory DeviceModel.fromJson(Map<String, dynamic> json) {
-    return DeviceModel(
-      name: json['name'],
-      power: json['power'],
-      category: json['category'],
-      usage: json['usage'].toDouble(),
-      usageInMinutes: json['usageInMinutes'].toDouble(),
-      daysUsed: json['daysUsed'],
-    );
+  // Método para calcular o consumo diário em kWh
+  double getDailyConsumption() {
+    return (power * usage) / 1000; // Potência (W) * Tempo de uso (h) / 1000
+  }
+
+  // Método para calcular o consumo mensal em kWh
+  double getMonthlyConsumption() {
+    return getDailyConsumption() *
+        daysUsed; // Consumo diário * dias de uso no mês
+  }
+
+  // Método para calcular o consumo anual em kWh
+  double getYearlyConsumption() {
+    return getDailyConsumption() * 365; // Consumo diário * 365 dias no ano
   }
 
   // Método para converter objeto Dart em um Map
@@ -41,22 +43,14 @@ class DeviceModel {
     };
   }
 
-  // Método para criar uma cópia do objeto com alterações opcionais
-  DeviceModel copyWith({
-    String? name,
-    int? power,
-    String? category,
-    double? usage,
-    double? usageInMinutes,
-    int? daysUsed,
-  }) {
+  factory DeviceModel.fromJson(Map<String, dynamic> json) {
     return DeviceModel(
-      name: name ?? this.name,
-      power: power ?? this.power,
-      category: category ?? this.category,
-      usage: usage ?? this.usage,
-      usageInMinutes: usageInMinutes ?? this.usageInMinutes,
-      daysUsed: daysUsed ?? this.daysUsed,
+      name: json['name'],
+      power: json['power'],
+      category: json['category'],
+      usage: json['usage'].toDouble(),
+      usageInMinutes: json['usageInMinutes'].toDouble(),
+      daysUsed: json['daysUsed'],
     );
   }
 }
