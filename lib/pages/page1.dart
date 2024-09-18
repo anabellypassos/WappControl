@@ -1,10 +1,11 @@
+import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'tela_2.dart';
 import 'configuracao_residencia.dart';
 import '../page1_store.dart';
 import '../todoModel.dart';
+import '../widgets/pieChartWidget.dart';
 
 class Page1 extends StatelessWidget {
   final Page1Store _store = Page1Store();
@@ -49,17 +50,20 @@ class Page1 extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const Text(
-              'Dispositivos Cadastrados',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16.0),
-            Expanded(
-              child: Observer(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              const Text(
+                'Dispositivos Cadastrados',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+
+              // Espaçamento entre o título e o gráfico de pizza
+              const SizedBox(height: 50.0), 
+
+              Observer(
                 builder: (_) {
                   if (_store.devices.isEmpty) {
                     return const Center(
@@ -80,45 +84,54 @@ class Page1 extends StatelessWidget {
                       // Gráfico de Pizza
                       PieChartWidget(categoryConsumption: categoryConsumption),
 
+                      // Espaçamento entre os gráficos
+                      const SizedBox(height: 32.0),
+
+                      // Gráfico de Colunas para Consumo
+                      BarChartWidget(
+                        store: _store,
+                        categoryConsumption: categoryConsumption,
+                      ),
+
                       const SizedBox(height: 16.0),
 
                       // Lista de dispositivos
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: _store.devices.length,
-                          itemBuilder: (context, index) {
-                            DeviceModel device = _store.devices[index];
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(), // Para evitar conflito com o scroll principal
+                        itemCount: _store.devices.length,
+                        itemBuilder: (context, index) {
+                          DeviceModel device = _store.devices[index];
 
-                            // Calcular os consumos
-                            double dailyConsumption =
-                                device.getDailyConsumption();
-                            double monthlyConsumption =
-                                device.getMonthlyConsumption();
-                            double yearlyConsumption =
-                                device.getYearlyConsumption();
+                          // Calcular os consumos
+                          double dailyConsumption =
+                              device.getDailyConsumption();
+                          double monthlyConsumption =
+                              device.getMonthlyConsumption();
+                          double yearlyConsumption =
+                              device.getYearlyConsumption();
 
-                            return Card(
-                              child: ListTile(
-                                title: Text(device.name),
-                                subtitle: Text(
-                                  'Potência: ${device.power}W\n'
-                                  'Uso diário: ${device.usage}h\n'
-                                  'Consumo diário: ${dailyConsumption.toStringAsFixed(2)} kWh\n'
-                                  'Consumo mensal: ${monthlyConsumption.toStringAsFixed(2)} kWh\n'
-                                  'Consumo anual: ${yearlyConsumption.toStringAsFixed(2)} kWh',
-                                ),
-                                trailing: Text('Categoria: ${device.category}'),
+                          return Card(
+                            child: ListTile(
+                              title: Text(device.name),
+                              subtitle: Text(
+                                'Potência: ${device.power}W\n'
+                                'Uso diário: ${device.usage}h\n'
+                                'Consumo diário: ${dailyConsumption.toStringAsFixed(2)} kWh\n'
+                                'Consumo mensal: ${monthlyConsumption.toStringAsFixed(2)} kWh\n'
+                                'Consumo anual: ${yearlyConsumption.toStringAsFixed(2)} kWh',
                               ),
-                            );
-                          },
-                        ),
+                              trailing: Text('Categoria: ${device.category}'),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   );
                 },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -139,182 +152,82 @@ class Page1 extends StatelessWidget {
   }
 }
 
-class PieChartWidget extends StatefulWidget {
+class BarChartWidget extends StatelessWidget {
+  final Page1Store store;
   final Map<String, double> categoryConsumption;
 
-  const PieChartWidget({super.key, required this.categoryConsumption});
-
-  @override
-  _PieChartWidgetState createState() => _PieChartWidgetState();
-}
-
-class _PieChartWidgetState extends State<PieChartWidget> {
-  String? _selectedCategory;
-  Color? _selectedCategoryColor;
+  const BarChartWidget({
+    super.key,
+    required this.store,
+    required this.categoryConsumption,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12), // Borda arredondada
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1), // Cor da sombra
-                spreadRadius: 2, // Expansão da sombra
-                blurRadius: 4, // Desfoque da sombra
-                offset: const Offset(0, 2), // Posição da sombra
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius:
-                BorderRadius.circular(12), // Borda arredondada no gráfico
-            child: AspectRatio(
-              aspectRatio: 1.3,
-              child: PieChart(
-                PieChartData(
-                  sections: _generateSections(),
-                  borderData: FlBorderData(show: false),
-                  sectionsSpace: 0,
-                  centerSpaceRadius: 40,
-                  pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                      if (event is FlTapUpEvent &&
-                          pieTouchResponse != null &&
-                          pieTouchResponse.touchedSection != null) {
-                        final categoryIndex = pieTouchResponse
-                            .touchedSection!.touchedSectionIndex;
-                        final category = widget.categoryConsumption.keys
-                            .elementAt(categoryIndex);
-                        final color = _generateSections()[categoryIndex].color;
-                        setState(() {
-                          _selectedCategory = category;
-                          _selectedCategoryColor = color;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
+    return SfCartesianChart(
+      primaryXAxis: const CategoryAxis(),
+      title: const ChartTitle(
+        text: 'Consumo por Categoria (kWh)',
+        textStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)
         ),
-        const SizedBox(height: 16.0),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12), // Borda arredondada
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1), // Cor da sombra
-                spreadRadius: 2, // Expansão da sombra
-                blurRadius: 4, // Desfoque da sombra
-                offset: const Offset(0, 2), // Posição da sombra
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildCategoryList(),
-                if (_selectedCategory != null && _selectedCategoryColor != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 20,
-                          color: _selectedCategoryColor,
-                        ),
-                        const SizedBox(width: 8.0),
-                        Text(
-                          'Categoria: $_selectedCategory',
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
+      legend: const Legend(isVisible: true),
+      tooltipBehavior: TooltipBehavior(enable: true),
+      series: <CartesianSeries>[
+        ColumnSeries<CategoryConsumption, String>(
+          dataSource: _getCategoryConsumptionData(),
+          xValueMapper: (CategoryConsumption data, _) => data.category,
+          yValueMapper: (CategoryConsumption data, _) => data.daily,
+          name: 'Diário',
+          color: Colors.blue,
+        ),
+        ColumnSeries<CategoryConsumption, String>(
+          dataSource: _getCategoryConsumptionData(),
+          xValueMapper: (CategoryConsumption data, _) => data.category,
+          yValueMapper: (CategoryConsumption data, _) => data.monthly,
+          name: 'Mensal',
+          color: Colors.orange,
+        ),
+        ColumnSeries<CategoryConsumption, String>(
+          dataSource: _getCategoryConsumptionData(),
+          xValueMapper: (CategoryConsumption data, _) => data.category,
+          yValueMapper: (CategoryConsumption data, _) => data.annual,
+          name: 'Anual',
+          color: Colors.green,
         ),
       ],
     );
   }
 
-  Widget _buildCategoryList() {
-    final List<Color> colors = [
-      Colors.blue,
-      Colors.yellow,
-      Colors.purple,
-      Colors.green,
-      Colors.red,
-    ];
+  List<CategoryConsumption> _getCategoryConsumptionData() {
+    List<CategoryConsumption> consumptionData = [];
 
-    List<Widget> categoryWidgets = [];
-    int index = 0;
-    widget.categoryConsumption.forEach((category, _) {
-      categoryWidgets.add(
-        Row(
-          children: [
-            Container(
-              width: 20,
-              height: 20,
-              color: colors[index % colors.length],
-            ),
-            const SizedBox(width: 8.0),
-            Text(
-              category,
-              style: const TextStyle(fontSize: 16),
-            ),
-          ],
-        ),
-      );
-      index++;
+    categoryConsumption.forEach((category, dailyConsumption) {
+      double monthlyConsumption =
+          dailyConsumption * 30; // Supondo 30 dias no mês
+      double annualConsumption =
+          dailyConsumption * 365; // Supondo 365 dias no ano
+      consumptionData.add(CategoryConsumption(
+        category: category,
+        daily: dailyConsumption,
+        monthly: monthlyConsumption,
+        annual: annualConsumption,
+      ));
     });
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: categoryWidgets,
-    );
+    return consumptionData;
   }
+}
 
-  List<PieChartSectionData> _generateSections() {
-    final List<Color> colors = [
-      Colors.blue,
-      Colors.yellow,
-      Colors.purple,
-      Colors.green,
-      Colors.red,
-    ];
+class CategoryConsumption {
+  final String category;
+  final double daily;
+  final double monthly;
+  final double annual;
 
-    List<PieChartSectionData> sections = [];
-    int index = 0;
-    widget.categoryConsumption.forEach((category, consumption) {
-      sections.add(
-        PieChartSectionData(
-          color: colors[index % colors.length],
-          value: consumption,
-          title:
-              '${(consumption / widget.categoryConsumption.values.reduce((a, b) => a + b) * 100).toStringAsFixed(1)}%',
-          radius: 50,
-          titleStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      );
-      index++;
-    });
-
-    return sections;
-  }
+  CategoryConsumption({
+    required this.category,
+    required this.daily,
+    required this.monthly,
+    required this.annual,
+  });
 }
